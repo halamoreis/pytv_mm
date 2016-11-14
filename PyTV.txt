@@ -1,0 +1,12 @@
+cd PyTV
+rm -f videosout/*
+cd videos
+./VideoSlplit.sh Nivarna-Poly.mp4 1
+cd ..
+
+#No primeiro terminal
+python ./PyTV-StreamServer.py
+#no segundo Terminal 
+python PyTV-StreamClient.py
+
+#Se funcionar em videosout vão estar vários arquivos .webm. O StreamClient receber os arquivos enviado pelo StreamServer e os grava no dir. videosout.
