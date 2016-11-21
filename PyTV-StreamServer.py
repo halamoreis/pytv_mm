@@ -7,14 +7,18 @@ import sys, time
 #Variaveis
 CODIGO = 1
 RESOLUCAO = 1
-ARRAY_RESOLUCAO = {"160x90_250k","320x180_500k","640x360_750k"}
+ARRAY_RESOLUCAO = ["160x90_250k","320x180_500k","640x360_750k"]
 BUFSIZE = 1024
+
+REQ = ["","",""]
+
+TIME_SLEEP = 2
 
 #Criando o canal TCP de comunicacao servidor Cliente
 # Create a TCP/IP socket
 sockCTL = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 # Bind the socket to the port
-server_address = ('localhost', 20000)
+server_address = ('localhost', 10000)
 print >>sys.stderr, 'Iniciando o canal de controle em  %s porta %s' % server_address
 sockCTL.bind(server_address)
 
@@ -29,26 +33,30 @@ while True:
         print >>sys.stderr, 'connection from', client_address
 
         # Receive the data in small chunks and retransmit it
-        while True:
-            data = connection.recv(BUFSIZE)
-            print >>sys.stderr, 'received "%s"' % data
-            if data == "true":
-                i=0
-                videofile = "videos/"+str(CODIGO).zfill(3)+"-640x360_750k_"+str(i).zfill(3)+".webm"
-                while (os.path.exists(videofile) is True ):
-                    VidFILE = open(videofile).read()
-                    print videofile
-                    print len(VidFILE)
-                    connection.sendall(VidFILE)
-                    connection.send("AAAAFFFFFFGGGGGGQQQQQQQQQ") #tag de final de arquivo
-                    i = i + 1
-                    videofile = "videos/"+str(CODIGO).zfill(3)+"-640x360_750k_"+str(i).zfill(3)+".webm"
-                    #raw_input("Press Enter to continue...")
-                    time.sleep(5)
-                break
-            else:
-                print >>sys.stderr, 'no more data from', client_address
-                break
+
+        data = connection.recv(BUFSIZE)
+        print >>sys.stderr, 'received "%s"' % data
+        if data != "":
+            i=0
+            req = data.split(";")
+            # Loop and print each city name.
+            for element in req:
+                REQ[i] = element
+                print str(i)+"-"+REQ[i]
+                i = i + 1
+
+            videofile = "videos/"+REQ[0].zfill(3)+"-"+ARRAY_RESOLUCAO[int(REQ[1])]+"_"+REQ[2].zfill(3)+".webm"
+            #videofile = "videos/"+REQ[0].zfill(3)+ARRAY_RESOLUCAO[int(REQ[1])]+REQ[2].zfill(3)+".webm"
+            #print videofile
+
+            if (os.path.exists(videofile) is True ):
+                VidFILE = open(videofile).read()
+                print videofile
+                print len(VidFILE)
+                connection.sendall(VidFILE)
+                connection.send("AAAAFFFFFFGGGGGGQQQQQQQQQ") #tag de final de arquivo
+                print "Arquivo "+videofile+" Enviado !"
+                time.sleep(TIME_SLEEP)
 
     finally:
         # Clean up the connection
