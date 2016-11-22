@@ -18,7 +18,7 @@ TIME_SLEEP = 2
 # Create a TCP/IP socket
 sockCTL = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 # Bind the socket to the port
-server_address = ('localhost', 10000)
+server_address = ('localhost', 20000)
 print >>sys.stderr, 'Iniciando o canal de controle em  %s porta %s' % server_address
 sockCTL.bind(server_address)
 
@@ -42,7 +42,7 @@ while True:
             # Loop and print each city name.
             for element in req:
                 REQ[i] = element
-                print str(i)+"-"+REQ[i]
+                #print str(i)+"-"+REQ[i]
                 i = i + 1
 
             videofile = "videos/"+REQ[0].zfill(3)+"-"+ARRAY_RESOLUCAO[int(REQ[1])]+"_"+REQ[2].zfill(3)+".webm"
@@ -51,11 +51,11 @@ while True:
 
             if (os.path.exists(videofile) is True ):
                 VidFILE = open(videofile).read()
-                print videofile
-                print len(VidFILE)
+                #print videofile
+                #print len(VidFILE)
                 connection.sendall(VidFILE)
                 connection.send("AAAAFFFFFFGGGGGGQQQQQQQQQ") #tag de final de arquivo
-                print "Arquivo "+videofile+" Enviado !"
+                print "Arquivo : "+videofile+" Tamanho : "+str(len(VidFILE))+" Enviado !"
                 time.sleep(TIME_SLEEP)
 
     finally:
