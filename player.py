@@ -1,5 +1,5 @@
 #! /usr/bin/python
-
+# coding=utf-8
 #
 # gtk example/widget for VLC Python bindings
 # Copyright (C) 2009-2010 the VideoLAN team
@@ -81,7 +81,14 @@ class DecoratedVLCWidget(gtk.VBox):
     def __init__(self, *p):
         gtk.VBox.__init__(self)
         self._vlc_widget = VLCWidget(*p)
-        self.player = self._vlc_widget.player
+        self.mediaList = instance.media_list_new()
+        # Agora o player deve ser um tocador de playlist(media_list)!
+        self.player = instance.media_list_player_new()
+        # Seta a lista para o player
+        self.player.set_media_list(self.mediaList)
+        # seta o player para o media_list_player
+        self.player.set_media_player(self._vlc_widget.player)
+        # self.player = self._vlc_widget.player
         self.pack_start(self._vlc_widget, expand=True)
         self._toolbar = self.get_player_control_toolbar()
         self.pack_start(self._toolbar, expand=False)
@@ -106,13 +113,49 @@ class DecoratedVLCWidget(gtk.VBox):
 class VideoPlayer:
     """Example simple video player.
     """
-    def __init__(self):
+    def __init__(self, numberVideosOnPlaylist, client, nextFragment):
         self.vlc = DecoratedVLCWidget()
-    
+        self.numberVideosOnPlaylist = numberVideosOnPlaylist
+        self.client = client
+        self.nextFragment = nextFragment
+        self.resolucao = resolucaoInicial
+
+        evm = self.vlc.player.event_manager()
+        evm.event_attach(vlc.EventType().MediaListPlayerNextItemSet, self.event_handler_nextMedia)
+
+
+    # Invocado para tratar o evento quando uma mídia (fragmento) é tocado.
+    def event_handler_nextMedia(self, event):
+        print "****   ***"
+        print "* Rolou um evento agora!"
+        print "****   %s " % (event)
+        print "****   ***"
+        # Um vídeo já foi tocado.
+        self.numberVideosOnPlaylist -= 1
+        # Adicionar novas mídias baixadas à playlist.
+        videoPath = client.getVideo(codigoVideo, self.resolucao, self.nextFragment)
+        if(videoPath != False):
+            self.addMedia(videoPath)
+            self.nextFragment += 1
+        else:
+            time.sleep(2)
+        # Solicita novas mídias
+        client.requestVideo(codigoVideo, self.resolucao, self.nextFragment)
+        self.nextFragment += 1
+
+
+
+    # Utilizado apenas para o primeiro play.
     def open(self, fname):
-        self.vlc.player.set_media(instance.media_new(fname))
-	self.vlc.player.play()
-       	
+        self.vlc.mediaList.add_media(instance.media_new(fname))
+        # self.vlc.player.set_media(instance.media_new(fname))
+        self.vlc.player.play()
+
+    def addMedia(self, fname):
+        print "Adicionando à playlist '%s'" % (fname)
+        self.vlc.mediaList.add_media(instance.media_new(fname))
+        # Um vídeo foi adicionado.
+        self.numberVideosOnPlaylist += 1
 
     def main(self):
         w = gtk.Window()
@@ -120,44 +163,86 @@ class VideoPlayer:
         w.show_all()
         w.connect("destroy", gtk.main_quit)
 
-class player(Thread):
+
+# Thread do Player VLC
+class PlayerThread(Thread):
     def __init__ (self):
-              Thread.__init__(self)
-              self.player = VideoPlayer()
+        Thread.__init__(self)
+        self.player = VideoPlayer()
 
     def run(self):
-              gtk.main()
+        gtk.main()
+
+
     
     def start_player(self):
               print "Open the player "
               self.player.main();
 
     def open(self, fname):
-              print "Open file %s" % fname
-	      self.player.open(fname)
+        print "Open file %s" % fname
+        self.player.open(fname)
     
     def play(self):
-              print "Play!"
-	      self.player.vlc.player.play();
+        print "Play!"
+        self.player.vlc.player.play();
 
 
 if __name__ == '__main__':
+    # Representa a quantidade de fragmentos que o buffer comporta
+    tamBuffer = 4
+    # Representa o código do vídeo a ser tocado (correspondente à tabela de vídeos)
+    codigoVideo = 1
+    # Representa a resolução inicial
+    resolucaoInicial = 1
+
     client = PyTVStreamClient.Client();
-    p = player()
+    p = PlayerThread()
     p.start_player();
 
     #p.open("videos/Nivarna-Poly.mp4");
 
     p.start();
-    client.start();
-    i = 0;
-    videofile = "videosout/testfile"+str(i).zfill(3)+".webm"
-    time.sleep(5) #sleep necessario para comecar a baixar o primeiro pkg
-    print "Tocando..."
-    while (os.path.exists(videofile) is True ):
-      p.open("videosout/testfile"+str(i).zfill(3)+".webm")
-      time.sleep(10) # sleep enquanto toca o video
-      i = i + 1
-      videofile = "videosout/testfile"+str(i).zfill(3)+".webm"
+    # client.start();
+    # i = 0;
+    # videofile = "videosout/v1res3_"+str(i).zfill(3)+".mp4"
+    print "rodando a playlist..."
 
+    # TODO Inicialmente baixar fragmentos para encher o buffer (1 = resolução mais baixa)
+    # Iterando entre número de fragmentos a serem baixados
+    for fragNumber in range(0, tamBuffer):
+        client.requestVideo(codigoVideo, resolucaoInicial, fragNumber)
+
+    # Adiciona à playlist os fragmentos iniciais que foram baixados.
+    fragNumber = 0
+    while(True):
+        if( -1 != client.wasReceivedVideo(codigoVideo, resolucaoInicial, fragNumber)):
+            # Se conseguiu receber o vídeo, então adicionao à media list do player.
+            p.player.addMedia(client.getVideo(codigoVideo, resolucaoInicial, fragNumber))
+            fragNumber += 1
+        else:
+            time.sleep(0.2)
+
+    # Ao conseguir adicionar todos os fragmentos, começa a tocar a playlist.
+    """ A partir desse momento a adição de novos fragmentos é tratada assincronamente
+    >>> pela função event_handler_next_media.
+    """
+    p.play()
+
+
+
+    # i = 1
+    # videofile = "videosout/v1res3_" + str(i).zfill(3) + ".mp4"
+    # while ( True):
+    #     if(os.path.exists(videofile)):
+    #         print "Arquivo '%s' encontrado!" % (videofile)
+    #         videofile = "videosout/v1res3_" + str(i).zfill(3) + ".mp4"
+    #         p.open(videofile)
+    #         i += 1
+    #     else:
+    #         print "Não encontrei o arquivo. Vou dormir..."
+    #     time.sleep(2)  # sleep enquanto toca o video
+
+
+    print "fializando..."
 
