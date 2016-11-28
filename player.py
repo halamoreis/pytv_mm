@@ -50,7 +50,7 @@ from threading import Thread
 import PyTVStreamClient
 
 # Create a single vlc.Instance() to be shared by (possible) multiple players.
-instance = vlc.Instance()
+instance = vlc.Instance("--no-xlib")
 
 class VLCWidget(gtk.DrawingArea):
     """Simple VLC widget.
@@ -130,10 +130,12 @@ class VideoPlayer:
         # nextFragment controla o próximo fragmento a ser adicionado à playlist
         self.nextFragment = nextFragment
         self.resolucao = resolucaoInicial
+        self.majorResolution = 2
+
 
         evm = self.vlc.player.event_manager()
         evm.event_attach(vlc.EventType().MediaListPlayerNextItemSet, self.event_handler_nextMedia)
-        evm.event_attach(vlc.EventType().MediaListEndReached, self.event_handler_endReached)
+        # evm.event_attach(vlc.EventType().MediaListEndReached, self.event_handler_endReached)
 
     def event_handler_endReached(self, event):
         print "======= =============================="
@@ -144,14 +146,14 @@ class VideoPlayer:
     def event_handler_nextMedia(self, event):
         print "****   ***"
         print "* Rolou um evento agora!"
-        # print "****   %s " % (event)
+        print "****   %s " % (event)
         # print "****   ***"
         # Um vídeo já foi tocado.
         self.numberVideosOnPlaylist -= 1
 
         # Evitando a primeira vez que o callback é chamado.
         if(self.nextFragment != 0):
-            self.client.watchedVideo(self.playerCount)
+            # self.client.watchedVideo(self.playerCount)
             self.playerCount += 1
 
         print "Vídeos na playlist [%d] prox frag [%d] prox req [%d] numReqFrag [%d]" \
@@ -165,17 +167,24 @@ class VideoPlayer:
         tryNumber = 0
         while (True):
             tryNumber += 1
-            if (-1 != client.wasReceivedVideo(codigoVideo, self.resolucao, self.nextFragment)):
+            retorno = client.getNextReceived()
+            if (retorno != False ):
                 # Se conseguiu receber o vídeo, então adicionao à media list do player.
-                videoPath = client.getVideo(codigoVideo, self.resolucao, self.nextFragment)
-                if (videoPath != False):
-                    self.addMedia(videoPath)
-                else:
-                    print "ERRO, não existe o arquivo! frag "+str(self.nextFragment)
+                # videoPath = client.getVideo(codigoVideo, self.resolucao, self.nextFragment)
+                # if (videoPath != False):
+                videoPath = retorno
+                self.addMedia(videoPath)
+                # else:
+                #     print "ERRO, não existe o arquivo! frag "+str(self.nextFragment)
+
+            if (self.numberVideosOnPlaylist < 2 and self.resolucao > 1):
+                # Decrementa a resolução para baixar videos com menos qualidade.
+                self.resolucao -= 1
 
             if (tryNumber > 2):
                 print "try %d" % (tryNumber)
                 print "Desistiu de adicionar fragmento [%d]..." % (self.nextFragment)
+
                 break
             else:
                 print "try %d" % (tryNumber)
@@ -185,17 +194,26 @@ class VideoPlayer:
         # videoPath = client.getVideo(codigoVideo, self.resolucao, self.nextFragment)
 
 
+        if (self.numberVideosOnPlaylist >= 3):
+            print ">>> Player: A taxa tá boa!"
+            if (self.resolucao < self.majorResolution):
+                # Incrementa a resolução nesse caso que a taxa está boa.
+                # Ou seja, a partir de agora os fragmentos serão baixados numa qualidade melhor.
+                self.resolucao += 1
+
+
         # Solicita novas mídias
         for i in range(0,3):
             if(self.numRequestedFragments < 4):
                 client.requestVideo(codigoVideo, self.resolucao, self.nextFragmentToRequest)
                 self.nextFragmentToRequest += 1
                 self.numRequestedFragments += 1
-            else:
-                if(self.numberVideosOnPlaylist >= 3 ):
-                    print ">>> Player: A taxa tá boa!"
-                break
+            # else:
+                # break
 
+        # self.vlc.player.play()
+        print "Fim tratamento evento."
+    # end event_handler_nextMedia
 
 
     # Utilizado apenas para o primeiro play.
@@ -275,16 +293,18 @@ if __name__ == '__main__':
     time.sleep(0.2)
     fragNumber = 0
     while(True):
-        if( -1 != client.wasReceivedVideo(codigoVideo, resolucaoInicial, fragNumber)):
+        retorno = client.getNextReceived()
+        if(retorno != False):
             # Se conseguiu receber o vídeo, então adicionao à media list do player.
             print "chamando addMedia "+str(fragNumber)
-            p.player.addMedia(client.getVideo(codigoVideo, resolucaoInicial, fragNumber))
+            if(retorno != False):
+                p.player.addMedia(retorno)
             fragNumber += 1
         else:
             if(fragNumber > 1):
                 break
             else:
-                print "vou dormir um pouquim pra ver se o cliente baixa algo..."
+                # print "vou dormir um pouquim pra ver se o cliente baixa algo..."
                 time.sleep(0.3)
 
 

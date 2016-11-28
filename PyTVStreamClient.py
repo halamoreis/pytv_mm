@@ -7,14 +7,19 @@ import os
 #To use Thread
 from threading import Thread
 
+FILE_EXTENSION = ".mp4"
 
 class Client(Thread):
     def __init__ (self):
        Thread.__init__(self)
 
        #Variaveis
-       self.BUFSIZE = 167535
-       #Variaveis Globais
+       # self.BUFSIZE = 167535
+       self.BUFSIZE = 1024
+       # Representa a fila de pedidos
+       self.fifoRequest = []
+       # Representa a fila de fragmentos recebidos
+       self.fifoReceived = []
        self.TAMANHO_BUFFER = 5
        self.IDX_REQ = 0
        self.IDX_REC = 0
@@ -37,21 +42,25 @@ class Client(Thread):
         # print "entrei aqui !"
         print ">>> >>>Solicitando vídeo [%d] resolução [%d] fragmento [%d]" % (codigo, resolucao, fragmento)
         self.IDX_REQ =0
+        request = [codigo, resolucao, fragmento]
+        self.fifoRequest.append(request)
 
-        while (sum < self.TAMANHO_BUFFER):
-            if(self.BUFFER_REQUISITADOS[self.IDX_REQ][0] == -1):
-                self.BUFFER_REQUISITADOS[self.IDX_REQ][0] = codigo
-                self.BUFFER_REQUISITADOS[self.IDX_REQ][1] = resolucao
-                self.BUFFER_REQUISITADOS[self.IDX_REQ][2] = fragmento
-                tIDX = self.IDX_REQ
-                print "Adicionado em : "+str(self.IDX_REQ)
-                break
-            else:
-                self.IDX_REQ = self.IDX_REQ +1
-                if(self.IDX_REQ == self.TAMANHO_BUFFER):
-                    self.IDX_REQ =0
-            sum = sum + 1
-        return tIDX
+        return request
+
+        # while (sum < self.TAMANHO_BUFFER):
+        #     if(self.BUFFER_REQUISITADOS[self.IDX_REQ][0] == -1):
+        #         self.BUFFER_REQUISITADOS[self.IDX_REQ][0] = codigo
+        #         self.BUFFER_REQUISITADOS[self.IDX_REQ][1] = resolucao
+        #         self.BUFFER_REQUISITADOS[self.IDX_REQ][2] = fragmento
+        #         tIDX = self.IDX_REQ
+        #         print "Adicionado em : "+str(self.IDX_REQ)
+        #         break
+        #     else:
+        #         self.IDX_REQ = self.IDX_REQ +1
+        #         if(self.IDX_REQ == self.TAMANHO_BUFFER):
+        #             self.IDX_REQ =0
+        #     sum = sum + 1
+        # return tIDX
 
     def wasReceivedVideo(self, codigo, resolucao, fragmento):
         sum = 0
@@ -62,6 +71,18 @@ class Client(Thread):
                 (self.BUFFER_RECEBIDOS[i][2] == fragmento) ):
                     tFIND = i
         return tFIND
+    # end wasReceivedVideo
+
+
+
+    def getNextReceived(self):
+        print self.fifoReceived
+        if(len(self.fifoReceived)):
+            request = self.fifoReceived[0]
+            self.fifoReceived.remove(request)
+            return request
+        return False
+    # end getNextReceived
 
     def watchedVideo(self, idx):
         sum = 0
@@ -99,73 +120,88 @@ class Client(Thread):
         return vdo_file
 
     def run(self):
-       try:
+        try:
 
-          self.IDX_REQ =0
+            self.IDX_REQ =0
 
-          while True:
-               time.sleep(0.1)
+            while True:
+                time.sleep(0.1)
 
-               if (self.BUFFER_REQUISITADOS[self.IDX_REQ][0] == -1):
-                   #print "."
-                   self.IDX_REQ = self.IDX_REQ +1
-                   if(self.IDX_REQ == self.TAMANHO_BUFFER):
-                       self.IDX_REQ =0
-               else:
-                   print "[client] Vai processar a requisição [%d][%d][%d]" % (self.BUFFER_REQUISITADOS[self.IDX_REQ][0],self.BUFFER_REQUISITADOS[self.IDX_REQ][1],self.BUFFER_REQUISITADOS[self.IDX_REQ][2])
-                   # Create a TCP/IP socket
-                   self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                   # Connect the socket to the port where the server is listening
-                   self.server_address = ('localhost', 20000)
-                   print >>sys.stderr, 'connecting to %s port %s' % self.server_address
-                   self.sock.connect(self.server_address)
+                # Verifica se existem pedidos a serem processados na fila
+                if (len(self.fifoRequest)):
+                    # Desempacota o pedido (array contendo [codigo, resolucao, fragmento])
+                    request = self.fifoRequest[0]
+                    code = request[0]
+                    resolution = request[1]
+                    fragmentNumber = request[2]
+                    print "[client] Vai processar a requisição [%d][%d][%d]" % (request[0],request[1],request[2])
+                    # Create a TCP/IP socket
+                    self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    # Connect the socket to the port where the server is listening
+                    self.server_address = ('localhost', 20000)
+                    print >>sys.stderr, 'connecting to %s port %s' % self.server_address
+                    self.sock.connect(self.server_address)
 
-                   # Send data
-                   self.message =  str(self.BUFFER_REQUISITADOS[self.IDX_REQ][0])+";"+\
-                                   str(self.BUFFER_REQUISITADOS[self.IDX_REQ][1])+";"+\
-                                   str(self.BUFFER_REQUISITADOS[self.IDX_REQ][2])
-                   print >>sys.stderr, 'sending "%s"' % self.message
-                   self.sock.send(self.message)
+                    # Send data
+                    self.message =  str(code)+";"+\
+                                   str(resolution)+";"+\
+                                   str(fragmentNumber)
+                    print >>sys.stderr, 'sending "%s"' % self.message
+                    self.sock.send(self.message)
 
-                   i=0
+                    i=0
 
-                   self.vdo_file = "videosout/rcv_"+str(self.BUFFER_REQUISITADOS[self.IDX_REQ][0])+"_"+\
-                                   str(self.BUFFER_REQUISITADOS[self.IDX_REQ][1])+"_"+\
-                                   str(self.BUFFER_REQUISITADOS[self.IDX_REQ][2])+".webm"
+                    vdo_file = "videosout/rcv_"+str(code)+"_"+\
+                                   str(resolution)+"_"+\
+                                   str(fragmentNumber)+FILE_EXTENSION
 
-                   self.myfile = open(self.vdo_file, 'w')
-                   t = 0
-                   while True:
-                       self.data = self.sock.recv(self.BUFSIZE)
-                       if not self.data:
-                           print "No data"
-                           break
-                       #self.JITTER_MSeg_ARRAY[t] = int(round(time.time() * 1000))
-                       #t = t + 1
-                       #token que indica o fim de envio de um arquivo
-                       if ("AAAAFFFFFFGGGGGGQQQQQQQQQ" in self.data):
-                           print "Arquivo "+self.vdo_file+" Recebido !"
-                           self.myfile.close()
-                           while (self.BUFFER_RECEBIDOS[self.IDX_REC][0] != -1):
-                               self.IDX_REC = self.IDX_REC +1
-                               if(self.IDX_REC == self.TAMANHO_BUFFER):
-                                   self.IDX_REC =0
-                           self.BUFFER_RECEBIDOS[self.IDX_REC][0] = self.BUFFER_REQUISITADOS[self.IDX_REQ][0]
-                           self.BUFFER_RECEBIDOS[self.IDX_REC][1] = self.BUFFER_REQUISITADOS[self.IDX_REQ][1]
-                           self.BUFFER_RECEBIDOS[self.IDX_REC][2] = self.BUFFER_REQUISITADOS[self.IDX_REQ][2]
+                    self.myfile = open(vdo_file, 'w')
+                    t = 0
 
-                           self.BUFFER_REQUISITADOS[self.IDX_REQ][0] = -1
-                           self.BUFFER_REQUISITADOS[self.IDX_REQ][1] = -1
-                           self.BUFFER_REQUISITADOS[self.IDX_REQ][2] = -1
-                           self.IDX_REQ = self.IDX_REQ + 1
-                           break
-                       else:
-                           self.myfile.write(self.data)
-                           print 'writing file %s....' % i
+                    # RECEBENDO DADOS
+                    while True:
+                        self.data = self.sock.recv(self.BUFSIZE)
+                        if not self.data:
+                            print "No data"
+                            # break
+                        #self.JITTER_MSeg_ARRAY[t] = int(round(time.time() * 1000))
+                        #t = t + 1
 
-       finally:
-           print >>sys.stderr, 'closing socket'
-           self.sock.close()
+                        if ("notfound" in self.data):
+                            print "Fragmento não encontrado no servidor!"
+                            break
+                        #token que indica o fim de envio de um arquivo
+                        if ("AAAAFFFFFFGGGGGGQQQQQQQQQ" in self.data):
+
+                            print "Arquivo "+vdo_file+" Recebido !"
+                            self.myfile.close()
+
+                            # Adiciona um novo arquivo recebido à fila de recebidos
+                            self.fifoReceived.append((vdo_file + '.')[:-1])
+
+                            # Remove a solicitação que foi concluída
+                            self.fifoRequest.remove(request)
+
+                            # while (self.BUFFER_RECEBIDOS[self.IDX_REC][0] != -1):
+                            #    self.IDX_REC = self.IDX_REC +1
+                            #    if(self.IDX_REC == self.TAMANHO_BUFFER):
+                            #        self.IDX_REC =0
+                            # self.BUFFER_RECEBIDOS[self.IDX_REC][0] = self.BUFFER_REQUISITADOS[self.IDX_REQ][0]
+                            # self.BUFFER_RECEBIDOS[self.IDX_REC][1] = self.BUFFER_REQUISITADOS[self.IDX_REQ][1]
+                            # self.BUFFER_RECEBIDOS[self.IDX_REC][2] = self.BUFFER_REQUISITADOS[self.IDX_REQ][2]
+                            #
+                            # self.BUFFER_REQUISITADOS[self.IDX_REQ][0] = -1
+                            # self.BUFFER_REQUISITADOS[self.IDX_REQ][1] = -1
+                            # self.BUFFER_REQUISITADOS[self.IDX_REQ][2] = -1
+                            # self.IDX_REQ = self.IDX_REQ + 1
+                            break
+                        else:
+                            self.myfile.write(self.data)
+                            # print 'writing file %s....' % i
+
+        finally:
+            print >>sys.stderr, 'closing socket'
+            self.sock.close()
 
 #Como Usar a Classe
 #client = Client()

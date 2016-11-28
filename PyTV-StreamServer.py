@@ -1,3 +1,4 @@
+# coding=utf-8
 import socket
 import os.path
 import sys, time
@@ -9,6 +10,7 @@ CODIGO = 1
 RESOLUCAO = 1
 ARRAY_RESOLUCAO = ["160x90_250k","320x180_500k","640x360_750k"]
 BUFSIZE = 1024
+FILE_EXTENSION = ".mp4"
 
 REQ = ["","",""]
 
@@ -35,17 +37,25 @@ while True:
         # Receive the data in small chunks and retransmit it
 
         data = connection.recv(BUFSIZE)
-        print >>sys.stderr, 'received "%s"' % data
+        print >>sys.stderr, 'received "%s" tamanho %d' % (data, len(data))
+        req = data.split(";")
+        print "tamanho do pedido %d" % (len(req))
+        print "caractere final '%s'" % data[len(data)-1]
+        if(data[len(data)-1] == '\n'):
+            print "Eh um enter!"
+
         if data != "":
+            print "Entrou!"
             i=0
             req = data.split(";")
-            # Loop and print each city name.
+            # Loop and print each element.
             for element in req:
                 REQ[i] = element
                 #print str(i)+"-"+REQ[i]
                 i = i + 1
 
-            videofile = "videos/"+REQ[0].zfill(3)+"-"+ARRAY_RESOLUCAO[int(REQ[1])]+"_"+REQ[2].zfill(3)+".webm"
+
+            videofile = "videos/"+REQ[0].zfill(3)+"-"+ARRAY_RESOLUCAO[int(REQ[1])]+"_"+REQ[2].zfill(3)+FILE_EXTENSION
             #videofile = "videos/"+REQ[0].zfill(3)+ARRAY_RESOLUCAO[int(REQ[1])]+REQ[2].zfill(3)+".webm"
             #print videofile
 
@@ -56,10 +66,16 @@ while True:
                 connection.sendall(VidFILE)
                 connection.send("AAAAFFFFFFGGGGGGQQQQQQQQQ") #tag de final de arquivo
                 print "Arquivo : "+videofile+" Tamanho : "+str(len(VidFILE))+" Enviado !"
-                time.sleep(TIME_SLEEP)
+
+            else:
+                print "Arquivo solicitado não existe!"
+                connection.send("notfound")  # tag de final de arquivo
+
+            time.sleep(TIME_SLEEP)
 
     finally:
         # Clean up the connection
+        print "Fechando conexão!"
         connection.close()
 
 
