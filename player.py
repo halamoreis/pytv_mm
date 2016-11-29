@@ -270,15 +270,15 @@ if __name__ == '__main__':
     print "Bem vindo ao PyTV"
     print "Esta é a lista de videos que temos hoje:"
     print "1 - Nirvana - Polly"
-    print "2 - Video 2"
-    print "3 - Video 3"
+    print "2 - Standard - Kambi"
     opcao = raw_input('Digita o numero do video que deseja assistir: ')
     codigoVideo = int(opcao) #Converte o valor de opcao para inteiro
     # Representa a resolução inicial
     print "Lista de resoluções disponiveis:"
     print "1 - 320x180"
     print "2 - 640x360"
-    print "3 - 720X480"
+    print "3 - 1280x720"
+    print "4 - 1920x1080"
     opcao = raw_input('Digita o numero da resolucao inicial desejada: ')
     resolucaoInicial = int(opcao) #Converte o valor de opcao para inteiro
 
