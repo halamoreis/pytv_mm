@@ -139,7 +139,7 @@ class Client(Thread):
                     self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     # Connect the socket to the port where the server is listening
                     self.server_address = ('localhost', 20000)
-                    print >>sys.stderr, 'connecting to %s port %s' % self.server_address
+                    print >> sys.stderr, 'connecting to %s port %s' % self.server_address
                     self.sock.connect(self.server_address)
 
                     # Send data
@@ -155,50 +155,24 @@ class Client(Thread):
                                    str(resolution)+"_"+\
                                    str(fragmentNumber)+FILE_EXTENSION
 
-                    self.myfile = open(vdo_file, 'w')
+                    self.myfile = open(vdo_file, 'wb')
                     t = 0
 
-                    # RECEBENDO DADOS
-                    while True:
-                        self.data = self.sock.recv(self.BUFSIZE)
-                        if not self.data:
-                            print "No data"
-                            # break
-                        #self.JITTER_MSeg_ARRAY[t] = int(round(time.time() * 1000))
-                        #t = t + 1
 
+                    self.data = self.sock.recv(self.BUFSIZE)
+                    while (self.data):
                         if ("notfound" in self.data):
                             print "Fragmento não encontrado no servidor!"
                             break
-                        #token que indica o fim de envio de um arquivo
-                        if ("AAAAFFFFFFGGGGGGQQQQQQQQQ" in self.data):
+                        self.myfile.write(self.data)
+                        self.data = self.sock.recv(self.BUFSIZE)
 
-                            print "Arquivo "+vdo_file+" Recebido !"
-                            self.myfile.close()
+                    self.myfile.close()
+                    # Adiciona um novo arquivo recebido à fila de recebidos
+                    self.fifoReceived.append((vdo_file + '.')[:-1])
 
-                            # Adiciona um novo arquivo recebido à fila de recebidos
-                            self.fifoReceived.append((vdo_file + '.')[:-1])
-
-                            # Remove a solicitação que foi concluída
-                            self.fifoRequest.remove(request)
-
-                            # while (self.BUFFER_RECEBIDOS[self.IDX_REC][0] != -1):
-                            #    self.IDX_REC = self.IDX_REC +1
-                            #    if(self.IDX_REC == self.TAMANHO_BUFFER):
-                            #        self.IDX_REC =0
-                            # self.BUFFER_RECEBIDOS[self.IDX_REC][0] = self.BUFFER_REQUISITADOS[self.IDX_REQ][0]
-                            # self.BUFFER_RECEBIDOS[self.IDX_REC][1] = self.BUFFER_REQUISITADOS[self.IDX_REQ][1]
-                            # self.BUFFER_RECEBIDOS[self.IDX_REC][2] = self.BUFFER_REQUISITADOS[self.IDX_REQ][2]
-                            #
-                            # self.BUFFER_REQUISITADOS[self.IDX_REQ][0] = -1
-                            # self.BUFFER_REQUISITADOS[self.IDX_REQ][1] = -1
-                            # self.BUFFER_REQUISITADOS[self.IDX_REQ][2] = -1
-                            # self.IDX_REQ = self.IDX_REQ + 1
-                            break
-                        else:
-                            self.myfile.write(self.data)
-                            # print 'writing file %s....' % i
-
+                    # Remove a solicitação que foi concluída
+                    self.fifoRequest.remove(request)
         finally:
             print >>sys.stderr, 'closing socket'
             self.sock.close()

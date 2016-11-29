@@ -60,23 +60,31 @@ while True:
             #print videofile
 
             if (os.path.exists(videofile) is True ):
-                VidFILE = open(videofile).read()
+                VidFILE = open(videofile,"rb")
                 #print videofile
                 #print len(VidFILE)
-                connection.sendall(VidFILE)
-                connection.send("AAAAFFFFFFGGGGGGQQQQQQQQQ") #tag de final de arquivo
-                print "Arquivo : "+videofile+" Tamanho : "+str(len(VidFILE))+" Enviado !"
+                sendData = VidFILE.read(BUFSIZE)
+                while (sendData):
+                    connection.send(sendData)
+                    sendData = VidFILE.read(BUFSIZE)
 
+                #connection.sendall(VidFILE)
+
+                #connection.send("AAAAFFFFFFGGGGGGQQQQQQQQQ") #tag de final de arquivo
+                print "Arquivo : "+videofile+" Enviado !"
+                VidFILE.close()
+                connection.close()
             else:
                 print "Arquivo solicitado não existe!"
                 connection.send("notfound")  # tag de final de arquivo
+                connection.close()
 
             time.sleep(TIME_SLEEP)
 
     finally:
         # Clean up the connection
         print "Fechando conexão!"
-        connection.close()
+        #connection.close()
 
 
 
