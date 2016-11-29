@@ -267,9 +267,21 @@ if __name__ == '__main__':
     # Representa a quantidade de fragmentos que o buffer comporta
     tamBuffer = 4
     # Representa o código do vídeo a ser tocado (correspondente à tabela de vídeos)
-    codigoVideo = 1
+    print "Bem vindo ao PyTV"
+    print "Esta é a lista de videos que temos hoje:"
+    print "1 - Nirvana - Polly"
+    print "2 - Video 2"
+    print "3 - Video 3"
+    opcao = raw_input('Digita o numero do video que deseja assistir: ')
+    codigoVideo = int(opcao) #Converte o valor de opcao para inteiro
     # Representa a resolução inicial
-    resolucaoInicial = 1
+    print "Lista de resoluções disponiveis:"
+    print "1 - 320x180"
+    print "2 - 640x360"
+    print "3 - 720X480"
+    opcao = raw_input('Digita o numero da resolucao inicial desejada: ')
+    resolucaoInicial = int(opcao) #Converte o valor de opcao para inteiro
+
 
     client = PyTVStreamClient.Client()
 
