@@ -8,7 +8,7 @@ import sys, time
 #Variaveis
 CODIGO = 1
 RESOLUCAO = 1
-ARRAY_RESOLUCAO = ["160x90_250k","320x180_500k","640x360_750k"]
+ARRAY_RESOLUCAO = ["720x480","1280x720","1920x1080"]
 BUFSIZE = 1024
 FILE_EXTENSION = ".mp4"
 
@@ -20,7 +20,7 @@ TIME_SLEEP = 2
 # Create a TCP/IP socket
 sockCTL = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 # Bind the socket to the port
-server_address = ('localhost', 20000)
+server_address = ('192.168.27.211', 20000)
 print >>sys.stderr, 'Iniciando o canal de controle em  %s porta %s' % server_address
 sockCTL.bind(server_address)
 
@@ -55,7 +55,7 @@ while True:
                 i = i + 1
 
 
-            videofile = "videos/"+REQ[0].zfill(3)+"-"+ARRAY_RESOLUCAO[int(REQ[1])]+"_"+REQ[2].zfill(3)+FILE_EXTENSION
+            videofile = "videos/"+REQ[0].zfill(3)+"-"+ARRAY_RESOLUCAO[int(REQ[1])-1]+"_"+REQ[2].zfill(3)+FILE_EXTENSION
             #videofile = "videos/"+REQ[0].zfill(3)+ARRAY_RESOLUCAO[int(REQ[1])]+REQ[2].zfill(3)+".webm"
             #print videofile
 
@@ -75,11 +75,11 @@ while True:
                 VidFILE.close()
                 connection.close()
             else:
-                print "Arquivo solicitado não existe!"
+                print "Arquivo ("+videofile+")solicitado não existe!"
                 connection.send("notfound")  # tag de final de arquivo
                 connection.close()
 
-            time.sleep(TIME_SLEEP)
+            #time.sleep(TIME_SLEEP)
 
     finally:
         # Clean up the connection
