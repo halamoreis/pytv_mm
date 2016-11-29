@@ -1,0 +1,10 @@
+Tutorial para cortar vídeos:
+
+1. Abrir o arquivo ffprobe.sh e alterar nome e formato para o nome e o formato do arquivo original e em seguida executar.
+2. Abrir o arquivo resolucoes.py e alterar formato, resoluções e o código, em seguida executar pelo terminal com o comando:
+    python resolucoes > resolucoes.sh
+   Após isso, será criado um script para gerar os arquivos nas resoluções desejadas  
+3. Executar o arquivo metascript.py usando o comando:
+     python metascript.sh > gop.sh
+4. Executar o arquivo gop.sh
+
